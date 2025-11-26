@@ -1,6 +1,12 @@
-from flask import Flask, render_template, request, jsonify, Response, stream_with_context
+from flask import Flask, render_template, request, jsonify, Response, stream_with_context, make_response
 import yt_dlp
 import requests
+from datetime import datetime
+import logging
+import urllib.parse
+
+logging.basicConfig(level=logging. INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -12,17 +18,37 @@ def index():
 def convert():
     data = request.get_json()
     url = data.get('url')
-    # fmt = data.get('format', 'mp3') # Removed format selection
+    user_cookies = data.get('cookies', {})  # Get cookies from frontend
 
     if not url:
         return jsonify({'error': 'URL is required'}), 400
 
     try:
+        logger.info(f"Converting video: {url}")
+        logger.info(f"Received {len(user_cookies)} cookies from user")
+        
+        # Convert cookies dict to cookie file format for yt-dlp
+        cookie_file = '/tmp/cookies. txt'
+        if user_cookies:
+            with open(cookie_file, 'w') as f:
+                f.write('# Netscape HTTP Cookie File\n')
+                for key, value in user_cookies.items():
+                    # Format: domain flag path secure expiration name value
+                    f.write(f'. youtube. com\tTRUE\t/\tTRUE\t0\t{key}\t{value}\n')
+            logger.info("Cookie file created successfully")
+        
         ydl_opts = {
-            'format': 'bestaudio/best', # Always best audio
+            'format': 'bestaudio/best',
             'noplaylist': True,
-            'quiet': True,
+            'quiet': False,
+            'no_warnings': False,
+            'socket_timeout': 30,
         }
+        
+        # Add cookie file if cookies were provided
+        if user_cookies:
+            ydl_opts['cookiefile'] = cookie_file
+            logger.info("Using user cookies for extraction")
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -32,45 +58,78 @@ def convert():
             # Always MP3/Audio
             ext = 'mp3'
             
+            logger.info(f"Successfully processed: {title}")
+            logger.info(f"Video URL: {video_url[:100]}...")
+            
+            # FIX: Use urlencode to properly format query parameters
+            download_params = urllib.parse.urlencode({
+                'url': video_url,
+                'title': title,
+                'ext': ext
+            })
+            
             return jsonify({
                 'title': title,
-                'download_url': f'/api/download?url={requests.utils.quote(video_url)}&title={requests.utils.quote(title)}&ext={ext}'
+                'download_url': f'/api/download?{download_params}'
             })
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error: {str(e)}")
+        error_msg = str(e)
+        
+        # Provide helpful error messages
+        if "Sign in to confirm you're not a bot" in error_msg:
+            return jsonify({'error': 'Please log in to your YouTube account and try again'}), 400
+        elif "Login required" in error_msg or "age-restricted" in error_msg. lower():
+            return jsonify({'error': 'This video requires age verification.  Please log in to YouTube and try again'}), 400
+        else:
+            return jsonify({'error': error_msg}), 500
 
 @app.route('/api/download')
 def download():
     url = request.args.get('url')
-    title = request.args.get('title')
-    ext = request.args.get('ext')
+    title = request.args.get('title', 'audio')
+    ext = request.args.get('ext', 'mp3')
     
     if not url:
+        logger.error("Missing URL in download request")
         return "Missing URL", 400
 
-    req = requests.get(url, stream=True)
-    
-    # Sanitize title for the filename header to avoid UnicodeEncodeError
-    # Werkzeug/HTTP headers must be latin-1 safe.
-    # We'll replace non-ascii characters with underscores or similar.
-    safe_title = title.encode('ascii', 'ignore').decode('ascii')
-    safe_title = "".join([c if c.isalnum() or c in " .-_" else "_" for c in safe_title])
-    
-    return Response(
-        stream_with_context(req.iter_content(chunk_size=1024)),
-        content_type=req.headers['content-type'],
-        headers={
-            'Content-Disposition': f'attachment; filename="{safe_title}.{ext}"'
-        }
-    )
+    try:
+        logger.info(f"Starting download for: {title}")
+        req = requests.get(url, stream=True, timeout=30)
+        
+        if req.status_code != 200:
+            logger.error(f"Failed to get video URL: {req.status_code}")
+            return f"Failed to download: HTTP {req.status_code}", 400
+        
+        # Sanitize title for the filename header to avoid UnicodeEncodeError
+        safe_title = title.encode('ascii', 'ignore').decode('ascii')
+        safe_title = "".join([c if c.isalnum() or c in " .-_" else "_" for c in safe_title])
+        
+        logger.info(f"Downloading: {safe_title}. {ext}")
+        
+        return Response(
+            stream_with_context(req.iter_content(chunk_size=8192)),
+            content_type='audio/mpeg',
+            headers={
+                'Content-Disposition': f'attachment; filename="{safe_title}.{ext}"',
+                'Content-Length': req.headers.get('content-length', '')
+            }
+        )
+    except requests.exceptions. Timeout:
+        logger.error("Download timeout")
+        return "Download timed out", 504
+    except Exception as e:
+        logger.error(f"Download error: {str(e)}")
+        return f"Download failed: {str(e)}", 500
 
 @app.route("/robots.txt")
 def robots():
     """Serve robots.txt"""
     return app.send_static_file('robots.txt')
 
-@app.route("/sitemap. xml")
+@app.route("/sitemap.xml")
 def sitemap():
     """Generate sitemap.xml for ZipMedia"""
     pages = []
@@ -78,7 +137,7 @@ def sitemap():
     # Homepage
     pages.append({
         'loc': 'https://zipmedia.globsoft.tech/',
-        'lastmod': datetime. utcnow().strftime('%Y-%m-%d'),
+        'lastmod': datetime.utcnow().strftime('%Y-%m-%d'),
         'changefreq': 'daily',
         'priority': '1.0'
     })
@@ -165,7 +224,7 @@ def sitemap():
     
     # Build XML
     sitemap_xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
-    sitemap_xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    sitemap_xml += '<urlset xmlns="http://www. sitemaps.org/schemas/sitemap/0.9">\n'
     
     for page in pages:
         sitemap_xml += '  <url>\n'
@@ -180,3 +239,7 @@ def sitemap():
     response = make_response(sitemap_xml)
     response.headers['Content-Type'] = 'application/xml'
     return response
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
