@@ -1,13 +1,6 @@
-from flask import Flask, render_template, request, jsonify, Response, stream_with_context, make_response
-from pytube import YouTube
+from flask import Flask, render_template, request, jsonify, Response, stream_with_context
+import yt_dlp
 import requests
-from datetime import datetime
-import urllib.parse
-import logging
-
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -15,48 +8,37 @@ app = Flask(__name__)
 def index():
     return render_template('index.html')
 
-@app. route('/api/convert', methods=['POST'])
+@app.route('/api/convert', methods=['POST'])
 def convert():
     data = request.get_json()
     url = data.get('url')
+    # fmt = data.get('format', 'mp3') # Removed format selection
 
     if not url:
         return jsonify({'error': 'URL is required'}), 400
 
     try:
-        # Timeout for YouTube object creation
-        yt = YouTube(url, timeout=10)
-        
-        # Get the best audio stream
-        audio_stream = yt.streams.filter(only_audio=True).first()
-        
-        if not audio_stream:
-            return jsonify({'error': 'No audio stream available'}), 400
-        
-        title = yt.title
-        ext = 'mp3'
-        filesize = audio_stream.filesize
-        
-        # Warn if file is very large
-        if filesize > 50 * 1024 * 1024:  # 50 MB
-            logger.warning(f"Large audio file: {filesize / 1024 / 1024:.2f} MB")
-        
-        # Get the actual download URL from pytube
-        download_url = audio_stream.url
-        
-        logger.info(f"Successfully processed: {title} ({filesize / 1024 / 1024:.2f} MB)")
-        
-        return jsonify({
-            'title': title,
-            'download_url': f'/api/download? url={urllib.parse.quote(download_url)}&title={urllib.parse.quote(title)}&ext={ext}',
-            'filesize': filesize
-        })
+        ydl_opts = {
+            'format': 'bestaudio/best', # Always best audio
+            'noplaylist': True,
+            'quiet': True,
+        }
 
-    except requests.exceptions.Timeout:
-        return jsonify({'error': 'Request timed out.  Please try again.'}), 504
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            video_url = info['url']
+            title = info.get('title', 'audio')
+            
+            # Always MP3/Audio
+            ext = 'mp3'
+            
+            return jsonify({
+                'title': title,
+                'download_url': f'/api/download?url={requests.utils.quote(video_url)}&title={requests.utils.quote(title)}&ext={ext}'
+            })
+
     except Exception as e:
-        logger.error(f"Error: {str(e)}")
-        return jsonify({'error': 'Failed to process video. Please try another video.'}), 500
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/download')
 def download():
@@ -67,33 +49,28 @@ def download():
     if not url:
         return "Missing URL", 400
 
-    try:
-        req = requests.get(url, stream=True, timeout=30)
-        
-        # Sanitize title for the filename header
-        safe_title = title.encode('ascii', 'ignore').decode('ascii')
-        safe_title = "".join([c if c.isalnum() or c in " .-_" else "_" for c in safe_title])
-        
-        return Response(
-            stream_with_context(req.iter_content(chunk_size=8192)),
-            content_type=req.headers.get('content-type', 'audio/mpeg'),
-            headers={
-                'Content-Disposition': f'attachment; filename="{safe_title}.{ext}"',
-                'Content-Length': req.headers.get('content-length')
-            }
-        )
-    except requests.exceptions.Timeout:
-        return "Download timed out", 504
-    except Exception as e:
-        logger.error(f"Download error: {str(e)}")
-        return "Download failed", 500
+    req = requests.get(url, stream=True)
+    
+    # Sanitize title for the filename header to avoid UnicodeEncodeError
+    # Werkzeug/HTTP headers must be latin-1 safe.
+    # We'll replace non-ascii characters with underscores or similar.
+    safe_title = title.encode('ascii', 'ignore').decode('ascii')
+    safe_title = "".join([c if c.isalnum() or c in " .-_" else "_" for c in safe_title])
+    
+    return Response(
+        stream_with_context(req.iter_content(chunk_size=1024)),
+        content_type=req.headers['content-type'],
+        headers={
+            'Content-Disposition': f'attachment; filename="{safe_title}.{ext}"'
+        }
+    )
 
 @app.route("/robots.txt")
 def robots():
     """Serve robots.txt"""
     return app.send_static_file('robots.txt')
 
-@app. route("/sitemap.xml")
+@app.route("/sitemap. xml")
 def sitemap():
     """Generate sitemap.xml for ZipMedia"""
     pages = []
@@ -101,7 +78,7 @@ def sitemap():
     # Homepage
     pages.append({
         'loc': 'https://zipmedia.globsoft.tech/',
-        'lastmod': datetime.utcnow(). strftime('%Y-%m-%d'),
+        'lastmod': datetime. utcnow().strftime('%Y-%m-%d'),
         'changefreq': 'daily',
         'priority': '1.0'
     })
@@ -167,7 +144,7 @@ def sitemap():
         'loc': 'https://zipmedia. globsoft.tech/contact',
         'lastmod': datetime.utcnow().strftime('%Y-%m-%d'),
         'changefreq': 'monthly',
-        'priority': '0. 6'
+        'priority': '0.6'
     })
     
     # API Documentation
@@ -175,11 +152,11 @@ def sitemap():
         'loc': 'https://zipmedia.globsoft.tech/api/docs',
         'lastmod': datetime.utcnow().strftime('%Y-%m-%d'),
         'changefreq': 'weekly',
-        'priority': '0. 7'
+        'priority': '0.7'
     })
     
     # Blog/Resources
-    pages. append({
+    pages.append({
         'loc': 'https://zipmedia.globsoft.tech/blog',
         'lastmod': datetime.utcnow().strftime('%Y-%m-%d'),
         'changefreq': 'weekly',
@@ -203,7 +180,3 @@ def sitemap():
     response = make_response(sitemap_xml)
     response.headers['Content-Type'] = 'application/xml'
     return response
-
-
-if __name__ == '__main__':
-    app.run(debug=True)
