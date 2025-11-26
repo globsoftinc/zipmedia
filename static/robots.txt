@@ -1,0 +1,43 @@
+# ZipMedia - robots.txt
+# Generated: 2025-11-26
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/internal/
+Disallow: /temp/
+Disallow: /tmp/
+Disallow: /uploads/temp/
+Disallow: /private/
+Disallow: /*? *sort=
+Disallow: /*?*filter=
+Disallow: /*? *page=
+Allow: /?*
+
+# Crawl delay
+Crawl-delay: 1
+
+# Sitemap
+Sitemap: https://zipmedia.globsoft.tech/sitemap.xml
+
+# Specific bot rules
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Yandex
+Allow: /
+
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /

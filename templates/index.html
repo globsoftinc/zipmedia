@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Title -->
+    <title>ZipMedia - Free YouTube to MP3 Converter | Download Audio Instantly</title>
+    
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicons/favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicons/favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicons/favicon-16x16.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicons/apple-touch-icon.png') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='favicons/site.webmanifest') }}">
+    
+    <!-- Primary Meta Tags -->
+    <meta name="title" content="ZipMedia - Free YouTube to MP3 Converter | Download Audio Instantly">
+    <meta name="description" content="ZipMedia is the fastest free YouTube to MP3 converter.  Download high-quality audio from YouTube videos instantly with no sign-up required.  Fast, serverless, and reliable audio conversion.">
+    <meta name="keywords" content="YouTube to MP3, MP3 converter, YouTube audio converter, free MP3 downloader, YouTube download, music converter, audio extraction, video to MP3, online converter, free audio converter, YouTube music downloader, MP3 download, audio extraction tool, serverless converter">
+    <meta name="author" content="GlobSoft Inc.">
+    <meta name="copyright" content="Copyright © 2025 ZipMedia by GlobSoft Inc.  All rights reserved.">
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <meta name="language" content="English">
+    <meta name="revisit-after" content="3 days">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://zipmedia.globsoft.tech">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://zipmedia.globsoft.tech">
+    <meta property="og:title" content="ZipMedia - Free YouTube to MP3 Converter | Download Audio Instantly">
+    <meta property="og:description" content="Convert YouTube videos to MP3 instantly with ZipMedia. Fast, free, serverless audio conversion.  No sign-up required.  Download high-quality audio now! ">
+    <meta property="og:site_name" content="ZipMedia">
+    <meta property="og:image" content="https://zipmedia.globsoft.tech/static/images/logo.png">
+    <meta property="og:image:secure_url" content="https://zipmedia.globsoft.tech/static/images/logo.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:alt" content="ZipMedia - Free YouTube to MP3 Converter">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:locale:alternate" content="ne_NP">
+    
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://zipmedia.globsoft.tech">
+    <meta name="twitter:title" content="ZipMedia - Free YouTube to MP3 Converter">
+    <meta name="twitter:description" content="Download audio from YouTube videos instantly with ZipMedia. Fast, free, serverless MP3 conversion. No sign-up required! ">
+    <meta name="twitter:image" content="https://zipmedia.globsoft.tech/static/images/logo.png">
+    <meta name="twitter:image:alt" content="ZipMedia Logo">
+    <meta name="twitter:creator" content="@globsoftinc">
+    <meta name="twitter:site" content="@globsoftinc">
+    
+    <!-- Geo Location Meta Tags (Global with Nepal focus) -->
+    <meta name="geo.region" content="NP">
+    <meta name="geo.placename" content="Nepal">
+    <meta name="geo.position" content="27.7172;85.3240">
+    <meta name="ICBM" content="27. 7172, 85.3240">
+    
+    <!-- Mobile App Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="ZipMedia">
+    <meta name="application-name" content="ZipMedia">
+    <meta name="msapplication-TileColor" content="#FF6B35">
+    <meta name="msapplication-TileImage" content="{{ url_for('static', filename='images/logo. png') }}">
+    <meta name="theme-color" content="#FF6B35">
+    
+    <!-- Additional SEO Tags -->
+    <meta name="rating" content="General">
+    <meta name="distribution" content="global">
+    <meta name="coverage" content="Worldwide">
+    <meta name="target" content="all">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="MobileOptimized" content="320">
+    
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "ZipMedia",
+      "url": "https://zipmedia.globsoft.tech",
+      "logo": "https://zipmedia. globsoft.tech/static/images/logo.png",
+      "description": "Free YouTube to MP3 converter.  Download high-quality audio from YouTube videos instantly with no sign-up required.",
+      "applicationCategory": "UtilityApplication",
+      "operatingSystem": "Any",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": "YouTube to MP3 Conversion, High-Quality Audio, Instant Download, Serverless Processing, Free Forever, No Sign-up Required, Batch Conversion Support",
+      "browserRequirements": "Requires JavaScript.  Requires HTML5.",
+      "provider": {
+        "@type": "Organization",
+        "name": "GlobSoft Inc.",
+        "url": "https://globsoft.tech",
+        "logo": "https://globsoft.tech/img/mymain.png",
+        "sameAs": [
+          "https://www.facebook.com/globsoftinc",
+          "https://www.instagram.com/globsoftinc",
+          "https://x.com/globsoftinc",
+          "https://www.linkedin.com/company/globsoftinc",
+          "https://youtube.com/@globsoftinc"
+        ]
+      },
+      "areaServed": {
+        "@type": "Country",
+        "name": "Worldwide"
+      },
+      "inLanguage": ["en", "ne"]
+    }
+    </script>
+    
+    <!-- Organization Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "ZipMedia",
+      "url": "https://zipmedia.globsoft.tech",
+      "logo": "https://zipmedia. globsoft.tech/static/images/logo.png",
+      "description": "Free YouTube to MP3 converter with instant audio extraction",
+      "address": {
+        "@type": "PostalAddress",
+        "addressCountry": "NP"
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "Customer Support",
+        "url": "https://zipmedia.globsoft.tech"
+      }
+    }
+    </script>
+    
+    <!-- BreadcrumbList Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema. org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://zipmedia.globsoft.tech"
+        }
+      ]
+    }
+    </script>
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4. 0/css/all.min. css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style. css') }}">
+    
+    <!-- Preconnect for Performance -->
+    <link rel="preconnect" href="https://fonts. googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <link href="https://fonts.googleapis.com/css2? family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+</head>
+
+<body>
+    <div class="background-glow"></div>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="#" class="logo">ZipMedia<span class="dot">.</span></a>
+            <div class="hamburger-menu">
+                <i class="fa-solid fa-bars"></i>
+            </div>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#how-it-works">How it Works</a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="container">
+            <h1 class="hero-title">Unlock Your Media.<br>Convert <span class="gradient-text">YouTube</span> to MP3.</h1>
+            <p class="hero-subtitle">Serverless. Blazing Fast. Completely Free. The modern way to save your favorite
+                audio.</p>
+
+            <div class="converter-box">
+                <div class="input-group">
+                    <i class="fa-solid fa-link input-icon"></i>
+                    <input type="text" id="video-url" placeholder="Paste YouTube Link Here..." aria-label="YouTube URL">
+                    <button id="convert-btn" class="btn-primary">
+                        <span>Convert to MP3</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+                <p class="input-hint">Supports YouTube Videos & Shorts</p>
+            </div>
+        </div>
+    </header>
+
+    <section id="features" class="features">
+        <div class="container">
+            <div class="section-header">
+                <h2>Why ZipMedia?</h2>
+                <p>Built for speed and simplicity.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="icon-box">
+                        <i class="fa-solid fa-bolt"></i>
+                    </div>
+                    <h3>Serverless Speed</h3>
+                    <p>Powered by serverless technology for instant conversions without queues.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon-box">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <h3>Secure & Private</h3>
+                    <p>No logs, no tracking. Your data stays yours. We respect your privacy.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon-box">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </div>
+                    <h3>High Quality</h3>
+                    <p>Get the best audio (320kbps) and video (1080p+) quality available.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="how-it-works" class="how-it-works">
+        <div class="container">
+            <div class="section-header">
+                <h2>How It Works</h2>
+            </div>
+            <div class="steps-container">
+                <div class="step">
+                    <span class="step-number">01</span>
+                    <h4>Paste Link</h4>
+                    <p>Copy the URL of the YouTube video you want to convert.</p>
+                </div>
+                <div class="step-divider"></div>
+                <div class="step">
+                    <span class="step-number">02</span>
+                    <h4>Instant Convert</h4>
+                    <p>Our serverless engine extracts the high-quality audio instantly.</p>
+                </div>
+                <div class="step-divider"></div>
+                <div class="step">
+                    <span class="step-number">03</span>
+                    <h4>Download</h4>
+                    <p>Click download and enjoy your MP3 offline.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <a href="https://zipmedia.globsoft.tech" class="logo">ZipMedia<span class="dot">.</span></a>
+                    <p>&copy;
+                        <script>document.write(new Date().getFullYear())</script> ZipMedia. All rights reserved.
+                    </p>
+                    <p>Powered by GlobSoft Inc.</p>
+                </div>
+                <div class="social-links">
+                    <a href="https://www.facebook.com/globsoftinc" target="_blank"><i
+                            class="fa-brands fa-facebook"></i></a>
+                    <a href="https://www.instagram.com/globsoftinc" target="_blank"><i
+                            class="fa-brands fa-instagram"></i></a>
+                    <a href="https://x.com/globsoftinc" target="_blank"><i class="fa-brands fa-twitter"></i></a>
+                    <a href="https://www.linkedin.com/company/globsoftinc" target="_blank"><i
+                            class="fa-brands fa-linkedin"></i></a>
+                    <a href="https://youtube.com/@globsoftinc" target="_blank"><i class="fa-brands fa-youtube"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+
+</html>
