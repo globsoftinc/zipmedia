@@ -102,13 +102,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function isValidUrl(string) {
-        try {
-            new URL(string);
-            return string.includes('youtube.com') || string.includes('youtu.be');
-        } catch (_) {
-            return false;
-        }
+    try {
+        const urlObj = new URL(string);
+        // Check for all YouTube domains
+        const validDomains = ['youtube.com', 'www.youtube.com', 'youtu.be', 'm.youtube.com'];
+        return validDomains.some(domain => urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain));
+    } catch (_) {
+        return false;
     }
+}
 
     // Add shake animation keyframes dynamically
     const styleSheet = document.createElement("style");
