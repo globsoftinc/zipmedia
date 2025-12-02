@@ -5,7 +5,7 @@ from datetime import datetime
 import logging
 import urllib.parse
 
-logging.basicConfig(level=logging. INFO)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -28,13 +28,13 @@ def convert():
         logger.info(f"Received {len(user_cookies)} cookies from user")
         
         # Convert cookies dict to cookie file format for yt-dlp
-        cookie_file = '/tmp/cookies. txt'
+        cookie_file = '/tmp/cookies.txt'
         if user_cookies:
             with open(cookie_file, 'w') as f:
                 f.write('# Netscape HTTP Cookie File\n')
                 for key, value in user_cookies.items():
                     # Format: domain flag path secure expiration name value
-                    f.write(f'. youtube. com\tTRUE\t/\tTRUE\t0\t{key}\t{value}\n')
+                    f.write(f'.youtube.com\tTRUE\t/\tTRUE\t0\t{key}\t{value}\n')
             logger.info("Cookie file created successfully")
         
         ydl_opts = {
@@ -80,7 +80,7 @@ def convert():
         # Provide helpful error messages
         if "Sign in to confirm you're not a bot" in error_msg:
             return jsonify({'error': 'Please log in to your YouTube account and try again'}), 400
-        elif "Login required" in error_msg or "age-restricted" in error_msg. lower():
+        elif "Login required" in error_msg or "age-restricted" in error_msg.lower():
             return jsonify({'error': 'This video requires age verification.  Please log in to YouTube and try again'}), 400
         else:
             return jsonify({'error': error_msg}), 500
@@ -153,7 +153,7 @@ def sitemap():
     # Features Page
     pages.append({
         'loc': 'https://zipmedia.globsoft.tech/features',
-        'lastmod': datetime.utcnow(). strftime('%Y-%m-%d'),
+        'lastmod': datetime.utcnow().strftime('%Y-%m-%d'),
         'changefreq': 'monthly',
         'priority': '0.8'
     })
@@ -177,15 +177,15 @@ def sitemap():
     # About Page
     pages.append({
         'loc': 'https://zipmedia.globsoft.tech/about',
-        'lastmod': datetime.utcnow(). strftime('%Y-%m-%d'),
+        'lastmod': datetime.utcnow().strftime('%Y-%m-%d'),
         'changefreq': 'monthly',
         'priority': '0.7'
     })
     
     # Privacy Policy
     pages.append({
-        'loc': 'https://zipmedia.globsoft.tech/privacy-policy',
-        'lastmod': datetime.utcnow(). strftime('%Y-%m-%d'),
+        'loc': 'https://globsoft.tech/privacy-policy',
+        'lastmod': datetime.utcnow().strftime('%Y-%m-%d'),
         'changefreq': 'quarterly',
         'priority': '0.6'
     })
@@ -193,14 +193,14 @@ def sitemap():
     # Terms of Service
     pages.append({
         'loc': 'https://zipmedia.globsoft.tech/terms',
-        'lastmod': datetime. utcnow().strftime('%Y-%m-%d'),
+        'lastmod': datetime.utcnow().strftime('%Y-%m-%d'),
         'changefreq': 'quarterly',
         'priority': '0.6'
     })
     
     # Contact Page
     pages.append({
-        'loc': 'https://zipmedia. globsoft.tech/contact',
+        'loc': 'https://zipmedia.globsoft.tech/contact',
         'lastmod': datetime.utcnow().strftime('%Y-%m-%d'),
         'changefreq': 'monthly',
         'priority': '0.6'
@@ -224,7 +224,7 @@ def sitemap():
     
     # Build XML
     sitemap_xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
-    sitemap_xml += '<urlset xmlns="http://www. sitemaps.org/schemas/sitemap/0.9">\n'
+    sitemap_xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     
     for page in pages:
         sitemap_xml += '  <url>\n'
@@ -242,4 +242,4 @@ def sitemap():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True,host="192.168.100.34")

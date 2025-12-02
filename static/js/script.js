@@ -94,7 +94,7 @@ document. addEventListener('DOMContentLoaded', () => {
     function isValidUrl(string) {
         try {
             new URL(string);
-            return string.includes('youtube. com') || string.includes('youtu.be');
+            return string.includes('youtube.com') || string.includes('youtu.be');
         } catch (_) {
             return false;
         }
