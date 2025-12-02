@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # ============================================
-# YouTube to MP3 Converter (cnvmp3)
+# YouTube to MP3 Converter (cnvmp3 API ONLY)
 # ============================================
 
 class YouTubeToMP3Converter:
@@ -21,68 +21,113 @@ class YouTubeToMP3Converter:
     BASE_URL = "https://cnvmp3.com"
     
     def __init__(self, user_headers=None, user_ip=None):
-        """
-        Initialize converter with user's browser headers
-        
-        Args:
-            user_headers: Headers from user's browser request
-            user_ip: User's IP address for X-Forwarded-For
-        """
         self.session = requests.Session()
         self.user_ip = user_ip
         
-        # Build headers from user's browser (passed from frontend)
+        if user_headers is None:
+            user_headers = {}
+        
         self.session.headers.update({
-            "User-Agent": user_headers.get("User-Agent", "Mozilla/5.0"),
+            "User-Agent": user_headers.get("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"),
             "Accept": "*/*",
             "Accept-Language": user_headers.get("Accept-Language", "en-US,en;q=0.9"),
             "Content-Type": "application/json",
             "Origin": self.BASE_URL,
             "Referer": f"{self.BASE_URL}/v51",
-            "sec-ch-ua": user_headers.get("Sec-Ch-Ua", ""),
-            "sec-ch-ua-mobile": user_headers.get("Sec-Ch-Ua-Mobile", "?0"),
-            "sec-ch-ua-platform": user_headers.get("Sec-Ch-Ua-Platform", ""),
+            "sec-ch-ua": user_headers.get("Sec-Ch-Ua", '"Chromium";v="120", "Google Chrome";v="120"'),
+            "sec-ch-ua-mobile": user_headers.get("Sec-Ch-Ua-Mobile", "? 0"),
+            "sec-ch-ua-platform": user_headers.get("Sec-Ch-Ua-Platform", '"Windows"'),
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "same-origin",
         })
         
-        # Forward user's IP if available
         if user_ip:
             self.session.headers["X-Forwarded-For"] = user_ip
             self.session.headers["X-Real-IP"] = user_ip
     
     @staticmethod
     def extract_video_id(url):
-        """Extract YouTube video ID from URL"""
+        """Extract YouTube video ID from any YouTube URL format"""
+        if not url:
+            return None
+            
+        # Clean the URL
+        url = url.strip()
+        
         parsed = urlparse(url)
-        if parsed.hostname in ('www.youtube.com', 'youtube.com'):
+        
+        # Standard youtube.com/watch?v=VIDEO_ID
+        if parsed.hostname in ('www.youtube.com', 'youtube.com', 'm.youtube.com'):
             if parsed.path == '/watch':
                 return parse_qs(parsed.query).get('v', [None])[0]
-            elif parsed.path.startswith('/shorts/'):
-                return parsed.path.split('/')[2]
+            # Shorts: youtube.com/shorts/VIDEO_ID
+            elif '/shorts/' in parsed.path:
+                parts = parsed.path.split('/shorts/')
+                if len(parts) > 1:
+                    video_id = parts[1].split('/')[0].split('?')[0]
+                    return video_id if video_id else None
+            # Embed: youtube.com/embed/VIDEO_ID
+            elif '/embed/' in parsed.path:
+                parts = parsed.path.split('/embed/')
+                if len(parts) > 1:
+                    video_id = parts[1].split('/')[0].split('?')[0]
+                    return video_id if video_id else None
+            # Live: youtube.com/live/VIDEO_ID
+            elif '/live/' in parsed.path:
+                parts = parsed.path.split('/live/')
+                if len(parts) > 1:
+                    video_id = parts[1].split('/')[0].split('?')[0]
+                    return video_id if video_id else None
+        
+        # Short URL: youtu.be/VIDEO_ID? si=TRACKING
         elif parsed.hostname == 'youtu.be':
-            return parsed.path[1:]
+            # Path is /VIDEO_ID
+            video_id = parsed.path.lstrip('/')
+            # Remove any trailing stuff
+            video_id = video_id.split('/')[0].split('?')[0]
+            return video_id if video_id else None
+        
+        return None
+    
+    @staticmethod
+    def normalize_youtube_url(url):
+        """Convert any YouTube URL to standard format"""
+        video_id = YouTubeToMP3Converter.extract_video_id(url)
+        if video_id:
+            return f"https://www.youtube.com/watch?v={video_id}"
         return None
     
     def _post(self, endpoint, payload):
         """Make POST request to cnvmp3 API"""
         url = f"{self.BASE_URL}/{endpoint}"
         
+        logger.info(f"API Call: {endpoint}")
+        logger.debug(f"Payload: {payload}")
+        
         try:
             response = self.session.post(url, json=payload, timeout=60)
             
+            logger.info(f"Response status: {response.status_code}")
+            
             if not response.content:
+                logger.error("Empty response from server")
                 return {"success": False, "error": "Empty response from server"}
             
             try:
-                return response.json()
-            except requests.exceptions.JSONDecodeError:
+                result = response.json()
+                logger.debug(f"Response: {result}")
+                return result
+            except Exception as e:
+                logger.error(f"JSON decode error: {e}")
+                logger.error(f"Raw response: {response.text[:500]}")
                 return {"success": False, "error": f"Invalid response: {response.text[:100]}"}
                 
         except requests.exceptions.Timeout:
+            logger.error("Request timeout")
             return {"success": False, "error": "Request timed out"}
         except requests.exceptions.RequestException as e:
+            logger.error(f"Request error: {e}")
             return {"success": False, "error": str(e)}
     
     def check_database(self, youtube_id, quality=4, format_value=1):
@@ -130,13 +175,19 @@ class YouTubeToMP3Converter:
         Returns:
             dict with 'success', 'title', 'download_url' or 'error'
         """
+        # Extract video ID
         video_id = self.extract_video_id(youtube_url)
         if not video_id:
-            return {"success": False, "error": "Invalid YouTube URL"}
+            return {"success": False, "error": "Invalid YouTube URL - could not extract video ID"}
         
-        logger.info(f"Processing video ID: {video_id}")
+        # Normalize URL to standard format
+        normalized_url = self.normalize_youtube_url(youtube_url)
+        
+        logger.info(f"Video ID: {video_id}")
+        logger.info(f"Normalized URL: {normalized_url}")
         
         # Step 1: Check cache
+        logger.info("Step 1: Checking cache...")
         db_check = self.check_database(video_id, quality)
         
         if db_check.get('success') and db_check.get('data'):
@@ -149,29 +200,42 @@ class YouTubeToMP3Converter:
                 "cached": True
             }
         
+        logger.info("Not in cache, proceeding with conversion...")
+        
         # Step 2: Get video info
-        video_data = self.get_video_data(youtube_url)
+        logger.info("Step 2: Getting video info...")
+        video_data = self.get_video_data(normalized_url)
         
         if not video_data.get('success'):
-            return {"success": False, "error": video_data.get('error', 'Failed to get video info')}
+            error_msg = video_data.get('error', 'Failed to get video info')
+            logger.error(f"Failed to get video data: {error_msg}")
+            return {"success": False, "error": error_msg}
         
         title = video_data.get('title', f'video_{video_id}')
         logger.info(f"Video title: {title}")
         
         # Step 3: Convert
-        conversion = self.download_video_ucep(youtube_url, title, quality)
+        logger.info("Step 3: Converting...")
+        conversion = self.download_video_ucep(normalized_url, title, quality)
         
         if not conversion.get('success'):
-            return {"success": False, "error": conversion.get('error', 'Conversion failed')}
+            error_msg = conversion.get('error', 'Conversion failed')
+            logger.error(f"Conversion failed: {error_msg}")
+            return {"success": False, "error": error_msg}
         
         download_url = conversion.get('download_link')
         
         if not download_url:
+            logger.error("No download link in response")
             return {"success": False, "error": "No download link received"}
         
-        # Step 4: Cache for future (non-blocking, ignore errors)
+        logger.info(f"Download URL: {download_url}")
+        
+        # Step 4: Cache for future
+        logger.info("Step 4: Caching result...")
         try:
             self.insert_to_database(video_id, title, download_url, quality)
+            logger.info("Cached successfully")
         except Exception as e:
             logger.warning(f"Failed to cache: {e}")
         
@@ -185,13 +249,11 @@ class YouTubeToMP3Converter:
 
 def get_user_ip(req):
     """Extract real user IP from request"""
-    # Check common proxy headers
     if req.headers.get('X-Forwarded-For'):
-        # X-Forwarded-For can contain multiple IPs, first one is the client
         return req.headers.get('X-Forwarded-For').split(',')[0].strip()
     elif req.headers.get('X-Real-IP'):
         return req.headers.get('X-Real-IP')
-    elif req.headers.get('CF-Connecting-IP'):  # Cloudflare
+    elif req.headers.get('CF-Connecting-IP'):
         return req.headers.get('CF-Connecting-IP')
     else:
         return req.remote_addr
@@ -220,33 +282,34 @@ def index():
 @app.route('/api/convert', methods=['POST'])
 def convert():
     data = request.get_json()
-    url = data.get('url')
-    quality = data.get('quality', 4)  # Default quality
     
-    # Get browser info from frontend (optional, fallback to server-side extraction)
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    url = data.get('url', '').strip()
+    quality = data.get('quality', 4)
     frontend_headers = data.get('headers', {})
     
     if not url:
         return jsonify({'error': 'URL is required'}), 400
     
     # Validate YouTube URL
-    if 'youtube.com' not in url and 'youtu.be' not in url:
+    valid_domains = ['youtube.com', 'youtu.be', 'www.youtube.com', 'm.youtube.com']
+    if not any(domain in url for domain in valid_domains):
         return jsonify({'error': 'Please provide a valid YouTube URL'}), 400
     
     try:
-        logger.info(f"Converting video: {url}")
+        logger.info(f"=== New conversion request ===")
+        logger.info(f"Original URL: {url}")
         
         # Get user's real IP and headers
         user_ip = get_user_ip(request)
-        
-        # Merge frontend headers with server-extracted headers (frontend takes priority)
         user_headers = get_user_headers(request)
         user_headers.update(frontend_headers)
         
         logger.info(f"User IP: {user_ip}")
-        logger.info(f"User-Agent: {user_headers.get('User-Agent', 'unknown')[:50]}...")
         
-        # Initialize converter with user's browser fingerprint
+        # Initialize converter
         converter = YouTubeToMP3Converter(
             user_headers=user_headers,
             user_ip=user_ip
@@ -256,19 +319,27 @@ def convert():
         result = converter.convert(url, quality=quality)
         
         if not result.get('success'):
-            return jsonify({'error': result.get('error', 'Conversion failed')}), 400
+            error_msg = result.get('error', 'Conversion failed')
+            logger.error(f"Conversion failed: {error_msg}")
+            return jsonify({'error': error_msg}), 400
         
         title = result['title']
         download_url = result['download_url']
         
-        logger.info(f"Successfully processed: {title} (cached: {result.get('cached', False)})")
+        logger.info(f"Success! Title: {title}")
+        
+        # Sanitize title for URL
+        safe_title = re.sub(r'[^\w\s\-]', '', title)
+        safe_title = re.sub(r'\s+', ' ', safe_title).strip()
+        if not safe_title:
+            safe_title = "audio"
         
         # Build proxy download URL
         download_params = urllib.parse.urlencode({
             'url': download_url,
-            'title': title,
+            'title': safe_title,
             'ext': 'mp3'
-        })
+        }, quote_via=urllib.parse.quote)
         
         return jsonify({
             'title': title,
@@ -277,8 +348,10 @@ def convert():
         })
 
     except Exception as e:
-        logger.error(f"Error: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Unexpected error: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'error': 'An unexpected error occurred. Please try again.'}), 500
 
 
 @app.route('/api/download')
@@ -292,14 +365,15 @@ def download():
         return "Missing URL", 400
 
     try:
-        logger.info(f"Starting download for: {title}")
+        logger.info(f"=== Download request ===")
+        logger.info(f"Title: {title}")
+        logger.info(f"URL: {url[:100]}...")
         
-        # Use user's headers for the download request too
         user_headers = get_user_headers(request)
         user_ip = get_user_ip(request)
         
         download_headers = {
-            "User-Agent": user_headers.get("User-Agent", "Mozilla/5.0"),
+            "User-Agent": user_headers.get("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"),
             "Accept": "*/*",
             "Accept-Language": user_headers.get("Accept-Language", "en-US,en;q=0.9"),
             "Referer": "https://cnvmp3.com/",
@@ -310,44 +384,53 @@ def download():
         
         req = requests.get(url, headers=download_headers, stream=True, timeout=120)
         
+        logger.info(f"Download response: {req.status_code}")
+        
         if req.status_code != 200:
-            logger.error(f"Failed to get audio: {req.status_code}")
+            logger.error(f"Download failed: HTTP {req.status_code}")
             return f"Failed to download: HTTP {req.status_code}", 400
         
-        # Sanitize title for the filename header
-        safe_title = title.encode('ascii', 'ignore').decode('ascii')
-        safe_title = "".join([c if c.isalnum() or c in " .-_" else "_" for c in safe_title])
+        # Sanitize filename
+        safe_title = re.sub(r'[^\w\s\-\.]', '', title)
+        safe_title = re.sub(r'\s+', ' ', safe_title).strip()
+        if not safe_title or len(safe_title) < 2:
+            safe_title = "audio_download"
         
-        if not safe_title:
-            safe_title = "audio"
+        filename = f"{safe_title}.{ext}"
+        logger.info(f"Filename: {filename}")
         
-        logger.info(f"Downloading: {safe_title}.{ext}")
+        content_length = req.headers.get('content-length', '')
         
-        return Response(
+        response = Response(
             stream_with_context(req.iter_content(chunk_size=8192)),
-            content_type='audio/mpeg',
-            headers={
-                'Content-Disposition': f'attachment; filename="{safe_title}.{ext}"',
-                'Content-Length': req.headers.get('content-length', '')
-            }
+            content_type='audio/mpeg'
         )
+        
+        # Set download headers
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"; filename*=UTF-8\'\'{urllib.parse.quote(filename)}'
+        if content_length:
+            response.headers['Content-Length'] = content_length
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        
+        return response
+        
     except requests.exceptions.Timeout:
         logger.error("Download timeout")
         return "Download timed out", 504
     except Exception as e:
         logger.error(f"Download error: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         return f"Download failed: {str(e)}", 500
 
 
 @app.route("/robots.txt")
 def robots():
-    """Serve robots.txt"""
     return app.send_static_file('robots.txt')
 
 
 @app.route("/sitemap.xml")
 def sitemap():
-    """Generate sitemap.xml for ZipMedia"""
     pages = [
         {'loc': 'https://zipmedia.globsoft.tech/', 'changefreq': 'daily', 'priority': '1.0'},
         {'loc': 'https://zipmedia.globsoft.tech/converter', 'changefreq': 'weekly', 'priority': '0.9'},
@@ -368,12 +451,12 @@ def sitemap():
     sitemap_xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     
     for page in pages:
-        sitemap_xml += '  <url>\n'
+        sitemap_xml += f'  <url>\n'
         sitemap_xml += f'    <loc>{page["loc"]}</loc>\n'
         sitemap_xml += f'    <lastmod>{today}</lastmod>\n'
         sitemap_xml += f'    <changefreq>{page["changefreq"]}</changefreq>\n'
         sitemap_xml += f'    <priority>{page["priority"]}</priority>\n'
-        sitemap_xml += '  </url>\n'
+        sitemap_xml += f'  </url>\n'
     
     sitemap_xml += '</urlset>'
     
