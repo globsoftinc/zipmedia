@@ -1,11 +1,11 @@
-document. addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
     const convertBtn = document.getElementById('convert-btn');
     const videoUrlInput = document.getElementById('video-url');
 
     // Smooth scrolling for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
-            e. preventDefault();
+            e.preventDefault();
             document.querySelector(this.getAttribute('href')).scrollIntoView({
                 behavior: 'smooth'
             });
@@ -33,8 +33,8 @@ document. addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (! isValidUrl(url)) {
-            alert('Please enter a valid YouTube URL');
+        if (!isValidUrl(url)) {
+            showFlashMessage('Please enter a valid YouTube URL', 'error');
             return;
         }
 
@@ -44,8 +44,10 @@ document. addEventListener('DOMContentLoaded', () => {
         convertBtn.disabled = true;
 
         try {
-            // Get YouTube cookies from user's browser
-            const userCookies = await getYouTubeCookies();
+            // Collect browser headers to avoid IP blocking
+            const browserHeaders = getBrowserHeaders();
+            
+            console.log('Sending request with browser fingerprint');
 
             const response = await fetch('/api/convert', {
                 method: 'POST',
@@ -54,15 +56,23 @@ document. addEventListener('DOMContentLoaded', () => {
                 },
                 body: JSON.stringify({ 
                     url: url,
-                    cookies: userCookies || {}  // Send cookies to server
+                    quality: 4,  // High quality audio
+                    headers: browserHeaders  // Send browser headers to backend
                 }),
             });
 
             const data = await response.json();
 
             if (data.error) {
-                alert('Error: ' + data.error);
+                showFlashMessage('Error: ' + data.error, 'error');
             } else {
+                // Show cache status
+                if (data.cached) {
+                    showFlashMessage('Found in cache!  Starting instant download...', 'success');
+                } else {
+                    showFlashMessage('Conversion complete! Starting download...', 'success');
+                }
+                
                 // Trigger download
                 const a = document.createElement('a');
                 a.href = data.download_url;
@@ -73,7 +83,7 @@ document. addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('An error occurred. Please try again.');
+            showFlashMessage('An error occurred. Please try again.', 'error');
         } finally {
             convertBtn.innerHTML = originalText;
             convertBtn.disabled = false;
@@ -82,8 +92,8 @@ document. addEventListener('DOMContentLoaded', () => {
 
     function shakeInput() {
         const inputGroup = document.querySelector('.input-group');
-        inputGroup.style. animation = 'shake 0. 5s';
-        inputGroup. style.borderColor = '#ff0080';
+        inputGroup.style.animation = 'shake 0.5s';
+        inputGroup.style.borderColor = '#ff0080';
 
         setTimeout(() => {
             inputGroup.style.animation = 'none';
@@ -101,7 +111,7 @@ document. addEventListener('DOMContentLoaded', () => {
     }
 
     // Add shake animation keyframes dynamically
-    const styleSheet = document. createElement("style");
+    const styleSheet = document.createElement("style");
     styleSheet.innerText = `
         @keyframes shake {
             0% { transform: translateX(0); }
@@ -115,43 +125,98 @@ document. addEventListener('DOMContentLoaded', () => {
 });
 
 
-async function getYouTubeCookies() {
-    try {
-        // Method 1: Try Chrome extension API
-        if (typeof chrome !== 'undefined' && chrome.cookies) {
-            const cookies = await chrome.cookies.getAll({
-                url: 'https://www.youtube.com'
-            });
-            
-            return cookies.reduce((acc, cookie) => {
-                acc[cookie.name] = cookie.value;
-                return acc;
-            }, {});
-        } else {
-            // Method 2: Fallback - extract from document. cookie (limited access)
-            const cookieStr = document.cookie;
-            const cookies = {};
-            
-            if (cookieStr) {
-                cookieStr.split(';').forEach(c => {
-                    const [name, value] = c.trim(). split('=');
-                    if (name && value) {
-                        cookies[name] = decodeURIComponent(value);
-                    }
-                });
-                
-                if (Object.keys(cookies).length > 0) {
-                    return cookies;
-                }
-            }
-            
-            // If no cookies found, alert user
-            alert('Please make sure:\n1. You are logged into YouTube in another tab\n2. Allow this site to access cookies\n3.  Try refreshing the page');
-            return null;
-        }
-    } catch (error) {
-        console.warn('Cookie extraction failed:', error);
-        alert('Please log in to your YouTube account and try again.');
-        return null;
+/**
+ * Collect browser headers to send to backend
+ * This helps avoid IP blocking by using user's real browser fingerprint
+ */
+function getBrowserHeaders() {
+    return {
+        "User-Agent": navigator.userAgent,
+        "Accept-Language": navigator.language || navigator.userLanguage || "en-US",
+        "Sec-Ch-Ua": getSecChUa(),
+        "Sec-Ch-Ua-Mobile": isMobile() ? "?1" : "?0",
+        "Sec-Ch-Ua-Platform": getPlatform(),
+        "Screen-Resolution": `${window.screen.width}x${window.screen.height}`,
+        "Timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
+        "Color-Depth": window.screen.colorDepth.toString(),
+    };
+}
+
+
+/**
+ * Generate Sec-Ch-Ua header based on browser
+ */
+function getSecChUa() {
+    const ua = navigator.userAgent;
+    
+    if (ua.includes('Edg/')) {
+        const version = ua.match(/Edg\/(\d+)/)?.[1] || '120';
+        return `"Microsoft Edge";v="${version}", "Chromium";v="${version}", "Not_A Brand";v="99"`;
+    } else if (ua.includes('Chrome/')) {
+        const version = ua.match(/Chrome\/(\d+)/)?.[1] || '120';
+        return `"Chromium";v="${version}", "Google Chrome";v="${version}", "Not_A Brand";v="99"`;
+    } else if (ua.includes('Firefox/')) {
+        return ''; // Firefox doesn't send this header
+    } else if (ua.includes('Safari/') && !ua.includes('Chrome')) {
+        return ''; // Safari doesn't send this header
     }
+    
+    return '';
+}
+
+
+/**
+ * Detect if user is on mobile
+ */
+function isMobile() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+
+/**
+ * Get platform name for Sec-Ch-Ua-Platform header
+ */
+function getPlatform() {
+    const ua = navigator.userAgent;
+    
+    if (ua.includes('Windows')) return '"Windows"';
+    if (ua.includes('Mac')) return '"macOS"';
+    if (ua.includes('Linux') && ! ua.includes('Android')) return '"Linux"';
+    if (ua.includes('Android')) return '"Android"';
+    if (ua.includes('iPhone') || ua.includes('iPad')) return '"iOS"';
+    if (ua.includes('CrOS')) return '"Chrome OS"';
+    
+    return '"Unknown"';
+}
+
+
+/**
+ * Show flash message with type (success/error)
+ */
+function showFlashMessage(message, type = 'success') {
+    // Remove existing flash messages
+    const existingFlash = document.querySelector('.flash-message');
+    if (existingFlash) {
+        existingFlash.remove();
+    }
+    
+    const flashDiv = document.createElement('div');
+    flashDiv.className = `flash-message flash-${type}`;
+    
+    const icon = type === 'success' 
+        ? '<i class="fa-solid fa-circle-check"></i>' 
+        : '<i class="fa-solid fa-circle-exclamation"></i>';
+    
+    flashDiv.innerHTML = `${icon} ${message}`;
+    document.body.appendChild(flashDiv);
+
+    // Remove after 3 seconds
+    setTimeout(() => {
+        flashDiv.style.animation = 'slideOut 0.5s ease-in forwards';
+        setTimeout(() => {
+            if (document.body.contains(flashDiv)) {
+                document.body.removeChild(flashDiv);
+            }
+        }, 500);
+    }, 3000);
 }
