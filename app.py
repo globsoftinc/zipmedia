@@ -333,6 +333,8 @@ def convert():
         safe_title = re.sub(r'\s+', ' ', safe_title).strip()
         if not safe_title:
             safe_title = "audio"
+
+        download_url = download_url.replace('&', '%26').replace('#', '%23').replace('+', '%2B')
         
         # Build proxy download URL
         download_params = urllib.parse.urlencode({
@@ -463,3 +465,4 @@ def sitemap():
     response = make_response(sitemap_xml)
     response.headers['Content-Type'] = 'application/xml'
     return response
+
